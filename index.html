@@ -432,7 +432,12 @@ async function downloadNow(){
     saveCounters();
     renderCounters();
   }
-  window.open("https://drive.google.com/file/d/13dK3Z6690-Qu80o4AucONr9Ca-OVWMTU/view?usp=sharing", "_blank");
+  const a = document.createElement("a");
+  a.href = "https://drive.google.com/uc?export=download&id=13dK3Z6690-Qu80o4AucONr9Ca-OVWMTU";
+  a.download = "";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 /* ---------- project modal ---------- */
