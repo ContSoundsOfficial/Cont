@@ -240,9 +240,10 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
 .icon-btn{
   background:none;border:none;padding:0;margin:0;cursor:pointer;
   color:var(--text-dim);display:inline-flex;align-items:center;justify-content:center;
-  transition:color .2s ease, transform .2s ease;
+  transition:transform .2s ease;box-shadow:none;
 }
-.icon-btn:hover{transform:scale(1.3)}
+.icon-btn:hover{background:none;box-shadow:none;transform:scale(1.3)}
+.icon-btn:active{background:none;box-shadow:none;transform:scale(1.1)}
 .icon-btn svg{width:14px;height:14px;display:block}
 
 .reply-box{
@@ -445,6 +446,7 @@ async function initFirebase(){
     const db = getFirestore(app);
     const statsDocRef = doc(db, "contsound", "stats");
     const reviewsCollRef = collection(db, "contsound_reviews");
+    const repliesCollRef = collection(db, "contsound_replies");
 
     onSnapshot(statsDocRef, snap => {
       const data = snap.exists() ? snap.data() : { downloads: 0, views: 0 };
@@ -455,12 +457,23 @@ async function initFirebase(){
 
     const q = query(reviewsCollRef, orderBy("date", "desc"));
     onSnapshot(q, snap => {
-      reviews = snap.docs.map(d => ({ id: d.id, replies: [], ...d.data() }));
+      reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderReviewList();
       renderCounters();
     });
 
-    fb = { setDoc, increment, addDoc, updateDoc, deleteDoc, arrayUnion, doc, db, statsDocRef, reviewsCollRef };
+    const rq = query(repliesCollRef, orderBy("date", "asc"));
+    onSnapshot(rq, snap => {
+      repliesByReview = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        const list = repliesByReview[data.reviewId] || (repliesByReview[data.reviewId] = []);
+        list.push({ id: d.id, ...data });
+      });
+      renderReviewList();
+    });
+
+    fb = { setDoc, increment, addDoc, updateDoc, deleteDoc, arrayUnion, doc, db, statsDocRef, reviewsCollRef, repliesCollRef };
   } catch(err){
     console.error("Firebase failed to load, falling back to local storage:", err);
     fb = null;
@@ -475,10 +488,14 @@ let reviews = JSON.parse(localStorage.getItem(LS_REVIEWS) || "[]");
 reviews.forEach(r => {
   if(!r.id) r.id = "r" + r.date + Math.random().toString(36).slice(2,8);
   if(!r.replies) r.replies = [];
+  r.replies.forEach(rep => {
+    if(!rep.id) rep.id = "r" + rep.date + Math.random().toString(36).slice(2,8);
+  });
 });
 let currentUser = JSON.parse(localStorage.getItem(LS_SESSION) || "null");
 let selectedStars = 0;
 let openReplies = new Set(); // ids of reviews with reply box expanded
+let repliesByReview = {}; // fb mode only: reviewId -> [{id, username, text, date, reviewId}]
 
 /* ---------- number tweening ---------- */
 const _lastShown = {}; // id -> last displayed numeric value
@@ -678,11 +695,11 @@ function renderReviewList(){
   const sorted = fb ? reviews : reviews.slice().reverse();
   list.innerHTML = sorted.map((r, i) => {
     const isOwner = currentUser && currentUser.username === r.username;
-    const replies = r.replies || [];
-    const repliesHtml = replies.length ? `<div class="reply-list">${replies.map((rep, ri) => `
+    const replies = fb ? (repliesByReview[r.id] || []) : (r.replies || []);
+    const repliesHtml = replies.length ? `<div class="reply-list">${replies.map((rep) => `
       <div class="reply-item">
         <div class="reply-body"><span class="reply-name">${escapeHtml(rep.username)}</span> ${escapeHtml(rep.text)}</div>
-        ${currentUser && currentUser.username === rep.username ? `<button class="icon-btn delete-btn" onclick="deleteReply('${r.id}',${ri})" title="Delete">${TRASH_ICON}</button>` : ''}
+        ${currentUser && currentUser.username === rep.username ? `<button class="icon-btn delete-btn" onclick="deleteReply('${r.id}','${rep.id}')" title="Delete">${TRASH_ICON}</button>` : ''}
       </div>
     `).join('')}</div>` : '';
     const replyFormHtml = currentUser
@@ -789,53 +806,55 @@ async function submitReply(id){
   const input = document.getElementById(`replyText-${id}`);
   const text = input.value.trim();
   if(!text) return;
-  const reply = { username: currentUser.username, text, date: Date.now() };
   openReplies.add(id);
 
-  // optimistic: show it immediately instead of waiting on the network/listener
-  const rev = reviews.find(r => r.id === id);
-  if(rev){
-    rev.replies = rev.replies || [];
-    rev.replies.push(reply);
-  }
-  renderReviewList();
-
   if(fb){
+    const reply = { id: "pending-" + Date.now(), reviewId: id, username: currentUser.username, text, date: Date.now() };
+    // optimistic: show it immediately instead of waiting on the network/listener
+    (repliesByReview[id] || (repliesByReview[id] = [])).push(reply);
+    renderReviewList();
     try{
-      await fb.updateDoc(fb.doc(fb.db, "contsound_reviews", id), { replies: fb.arrayUnion(reply) });
+      await fb.addDoc(fb.repliesCollRef, { reviewId: id, username: currentUser.username, text, date: reply.date });
     } catch(err){
       console.error("Failed to save reply:", err);
-      if(rev) rev.replies = rev.replies.filter(r => r !== reply);
+      repliesByReview[id] = repliesByReview[id].filter(r => r !== reply);
       renderReviewList();
-      alert("Couldn't save your reply, try again.");
+      alert("Couldn't save your reply: " + (err.message || err));
     }
   } else {
-    saveReviews();
+    const reply = { id: "r" + Date.now() + Math.random().toString(36).slice(2,8), username: currentUser.username, text, date: Date.now() };
+    const rev = reviews.find(r => r.id === id);
+    if(rev){
+      rev.replies = rev.replies || [];
+      rev.replies.push(reply);
+      saveReviews();
+    }
+    renderReviewList();
   }
 }
 
-async function deleteReply(reviewId, replyIndex){
+async function deleteReply(reviewId, replyId){
   openReplies.add(reviewId);
-  const rev = reviews.find(r => r.id === reviewId);
-  if(!rev) return;
-  const removed = rev.replies[replyIndex];
-  const newReplies = (rev.replies || []).filter((_, i) => i !== replyIndex);
-
-  // optimistic
-  rev.replies = newReplies;
-  renderReviewList();
 
   if(fb){
+    const list = repliesByReview[reviewId] || [];
+    const removed = list.find(r => r.id === replyId);
+    repliesByReview[reviewId] = list.filter(r => r.id !== replyId);
+    renderReviewList();
     try{
-      await fb.updateDoc(fb.doc(fb.db, "contsound_reviews", reviewId), { replies: newReplies });
+      await fb.deleteDoc(fb.doc(fb.db, "contsound_replies", replyId));
     } catch(err){
       console.error("Failed to delete reply:", err);
-      rev.replies.splice(replyIndex, 0, removed);
+      if(removed) repliesByReview[reviewId].push(removed);
       renderReviewList();
-      alert("Couldn't delete that reply, try again.");
+      alert("Couldn't delete that reply: " + (err.message || err));
     }
   } else {
+    const rev = reviews.find(r => r.id === reviewId);
+    if(!rev) return;
+    rev.replies = (rev.replies || []).filter(r => r.id !== replyId);
     saveReviews();
+    renderReviewList();
   }
 }
 
