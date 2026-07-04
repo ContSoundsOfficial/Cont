@@ -18,6 +18,7 @@
   --line:#e3e4e9;
   --text:#14151c;
   --text-dim:#6b7080;
+  --danger:#c0273f;
   --ease: cubic-bezier(.16,1,.3,1);
 }
 *{box-sizing:border-box}
@@ -90,6 +91,7 @@ input:focus{border-color:var(--border);background:var(--surface);box-shadow:0 0 
   padding:9px 18px;border-radius:6px;border:1px solid var(--border);
   background:var(--surface);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;
   transition:background .25s ease, color .25s ease, border-color .25s ease, transform .15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-outline:hover{background:var(--accent);color:#fff;border-color:var(--accent);transform:translateY(-1px)}
 .btn-outline:active{transform:translateY(0) scale(.97)}
@@ -118,6 +120,7 @@ input:focus{border-color:var(--border);background:var(--surface);box-shadow:0 0 
   gap:0;
   transition:border-color .3s ease, transform .3s var(--ease), box-shadow .3s var(--ease);
   animation: fadeUp .6s var(--ease) .24s both;
+  -webkit-tap-highlight-color: transparent;
 }
 .card:hover{border-color:var(--border);transform:translateY(-4px);box-shadow:0 14px 30px -14px rgba(20,21,28,.25)}
 .card:active{transform:translateY(-1px)}
@@ -150,6 +153,7 @@ button{
   cursor:pointer;
   font-family:inherit;
   transition:background .25s ease, transform .15s ease, box-shadow .25s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 button:hover{background:#2a2c38;transform:translateY(-1px);box-shadow:0 8px 18px -10px rgba(20,21,28,.4)}
 button:active{transform:translateY(0) scale(.96)}
@@ -175,7 +179,7 @@ footer{max-width:680px;margin:0 auto;padding:24px;border-top:1px solid var(--lin
 }
 .modal-overlay.open .box{transform:translateY(0) scale(1);opacity:1}
 .box.narrow{width:min(380px,100%)}
-.close{float:right;cursor:pointer;color:var(--text-dim);font-size:16px;font-weight:600;transition:color .2s ease, transform .2s ease;display:inline-block}
+.close{float:right;cursor:pointer;color:var(--text-dim);font-size:16px;font-weight:600;transition:color .2s ease, transform .2s ease;display:inline-block;-webkit-tap-highlight-color: transparent;}
 .close:hover{color:var(--text);transform:rotate(90deg)}
 .modal-thumb{
   height:120px;border-radius:10px;background:var(--accent);
@@ -187,14 +191,14 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
 
 /* Auth modal */
 .auth-tabs{display:flex;gap:4px;margin:20px 0 24px;background:var(--accent-dim);border-radius:8px;padding:4px;position:relative}
-.auth-tab{flex:1;text-align:center;padding:9px 0;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-dim);border-radius:6px;transition:color .25s ease, background .25s var(--ease);position:relative;z-index:1}
+.auth-tab{flex:1;text-align:center;padding:9px 0;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-dim);border-radius:6px;transition:color .25s ease, background .25s var(--ease);position:relative;z-index:1;-webkit-tap-highlight-color: transparent;}
 .auth-tab.active{color:#fff;background:var(--accent)}
 .auth-panel{display:none}
 .auth-panel.active{display:block;animation: fadeUp .35s var(--ease) both}
 .field{margin-bottom:16px}
 .field label{display:block;font-size:11px;color:var(--text-dim);margin-bottom:6px;font-weight:600}
 .field input{width:100%}
-.auth-error{color:#c0273f;font-size:13px;margin:-8px 0 14px;min-height:1em;transition:opacity .2s ease}
+.auth-error{color:var(--danger);font-size:13px;margin:-8px 0 14px;min-height:1em;transition:opacity .2s ease}
 .switch-line{font-size:13px;color:var(--text-dim);margin-top:16px;text-align:center}
 .switch-line a{color:var(--text);text-decoration:underline;cursor:pointer}
 
@@ -202,7 +206,7 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
 .reviews-section{margin-top:32px;border-top:1px solid var(--line);padding-top:24px}
 .reviews-section h3{margin:0 0 16px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);font-weight:700}
 .star-picker{display:flex;gap:4px;margin-bottom:14px}
-.star-picker span{font-size:22px;cursor:pointer;color:#d5d8e0;transition:color .2s ease, transform .2s var(--ease);display:inline-block}
+.star-picker span{font-size:22px;cursor:pointer;color:#d5d8e0;transition:color .2s ease, transform .2s var(--ease);display:inline-block;-webkit-tap-highlight-color: transparent;}
 .star-picker span:hover{transform:scale(1.25)}
 .star-picker span.filled{color:var(--accent)}
 .review-form{animation: fadeUp .35s var(--ease) both}
@@ -240,10 +244,15 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
 .icon-btn{
   background:none;border:none;padding:0;margin:0;cursor:pointer;
   color:var(--text-dim);display:inline-flex;align-items:center;justify-content:center;
-  transition:transform .2s ease;box-shadow:none;
+  transition:transform .2s ease, color .2s ease;box-shadow:none;
+  -webkit-tap-highlight-color: transparent;
+  outline:none;
+  -webkit-touch-callout: none;
+  user-select:none;
 }
-.icon-btn:hover{background:none;box-shadow:none;transform:scale(1.3)}
+.icon-btn:hover{background:none;box-shadow:none;transform:scale(1.3);color:var(--text)}
 .icon-btn:active{background:none;box-shadow:none;transform:scale(1.1)}
+.icon-btn:focus{background:none;box-shadow:none;outline:none}
 .icon-btn svg{width:14px;height:14px;display:block}
 
 .reply-box{
@@ -269,6 +278,29 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
 .reply-input-row button{padding:8px 14px;font-size:12px;align-self:flex-end}
 .reply-locked{font-size:12px;color:var(--text-dim);padding:6px 0}
 .reply-locked a{color:var(--text);cursor:pointer;font-weight:600;text-decoration:underline}
+
+/* Toast notifications (replaces browser alert()) */
+#toastStack{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:8px;z-index:1000;
+  width:min(360px,calc(100vw - 32px));
+  pointer-events:none;
+}
+.toast{
+  background:var(--accent);color:#fff;border-radius:8px;
+  padding:12px 16px;font-size:13px;line-height:1.5;font-weight:500;
+  box-shadow:0 12px 28px -10px rgba(20,21,28,.45);
+  display:flex;align-items:flex-start;gap:10px;
+  opacity:0;transform:translateY(10px) scale(.98);
+  transition:opacity .25s var(--ease), transform .25s var(--ease);
+  pointer-events:auto;
+}
+.toast.show{opacity:1;transform:translateY(0) scale(1)}
+.toast.error{background:var(--danger)}
+.toast .toast-dot{width:6px;height:6px;border-radius:50%;background:#fff;margin-top:6px;flex-shrink:0;opacity:.8}
+.toast .toast-text{flex:1}
+.toast .toast-close{cursor:pointer;color:rgba(255,255,255,.7);font-size:14px;line-height:1;flex-shrink:0;-webkit-tap-highlight-color: transparent;}
+.toast .toast-close:hover{color:#fff}
 
 @media (max-width:640px){
   header{padding:14px 18px;flex-wrap:wrap}
@@ -403,6 +435,9 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
   </div>
 </div>
 
+<!-- Toast container (replaces browser alert() popups) -->
+<div id="toastStack"></div>
+
 <script>
 /* ---------- storage keys ---------- */
 const LS_DOWNLOADS = "cs_downloads";
@@ -410,6 +445,29 @@ const LS_VIEWS = "cs_views";
 const LS_REVIEWS = "cs_reviews";
 const LS_USERS = "cs_users";
 const LS_SESSION = "cs_session";
+
+/* ---------- toast notifications (replaces alert()) ---------- */
+function toast(message, type = "info", duration = 4000){
+  const stack = document.getElementById('toastStack');
+  const el = document.createElement('div');
+  el.className = `toast ${type === 'error' ? 'error' : ''}`;
+  el.innerHTML = `
+    <span class="toast-dot"></span>
+    <span class="toast-text"></span>
+    <span class="toast-close">✕</span>
+  `;
+  el.querySelector('.toast-text').textContent = message; // textContent avoids HTML injection
+  stack.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+
+  let timer = setTimeout(() => dismiss(), duration);
+  function dismiss(){
+    clearTimeout(timer);
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }
+  el.querySelector('.toast-close').onclick = dismiss;
+}
 
 /* =========================================================================
    SHARED BACKEND (Firebase Firestore)
@@ -423,6 +481,15 @@ const LS_SESSION = "cs_session";
         Copy the config object it gives you into FIREBASE_CONFIG below.
    Until you do that, this page falls back to per-browser localStorage, so
    it still works for local testing but won't sync between visitors.
+
+   NOTE ON THE REPLY-SAVE ERROR: if replies fail to save but reviews work
+   fine, it's almost always because your Firestore security rules cover
+   "contsound_reviews" and "contsound/stats" but not "contsound_replies".
+   In the Firebase console > Firestore Database > Rules, add a matching
+   rule for contsound_replies, e.g.:
+       match /contsound_replies/{docId} {
+         allow read, write: if true;
+       }
    ========================================================================= */
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCRfuEK5rt2KWwtd959Vch0T3eaD4fNFJ8",
@@ -761,8 +828,8 @@ function paintStars(){
 }
 async function submitReview(){
   const text = document.getElementById('reviewText').value.trim();
-  if(!selectedStars){ alert("Pick a star rating first."); return; }
-  if(!text){ alert("Write a short review first."); return; }
+  if(!selectedStars){ toast("Pick a star rating first."); return; }
+  if(!text){ toast("Write a short review first."); return; }
   const review = {
     username: currentUser.username,
     stars: selectedStars,
@@ -795,7 +862,7 @@ async function deleteReview(id){
       console.error("Failed to delete review:", err);
       reviews = prevReviews;
       renderReviews();
-      alert("Couldn't delete that review, try again.");
+      toast("Couldn't delete that review, try again.", "error");
     }
   } else {
     saveReviews();
@@ -819,7 +886,7 @@ async function submitReply(id){
       console.error("Failed to save reply:", err);
       repliesByReview[id] = repliesByReview[id].filter(r => r !== reply);
       renderReviewList();
-      alert("Couldn't save your reply: " + (err.message || err));
+      toast("Couldn't save your reply. Try again in a moment.", "error");
     }
   } else {
     const reply = { id: "r" + Date.now() + Math.random().toString(36).slice(2,8), username: currentUser.username, text, date: Date.now() };
@@ -847,7 +914,7 @@ async function deleteReply(reviewId, replyId){
       console.error("Failed to delete reply:", err);
       if(removed) repliesByReview[reviewId].push(removed);
       renderReviewList();
-      alert("Couldn't delete that reply: " + (err.message || err));
+      toast("Couldn't delete that reply. Try again in a moment.", "error");
     }
   } else {
     const rev = reviews.find(r => r.id === reviewId);
