@@ -279,6 +279,18 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
 .reply-locked{font-size:12px;color:var(--text-dim);padding:6px 0}
 .reply-locked a{color:var(--text);cursor:pointer;font-weight:600;text-decoration:underline}
 
+.toggle-btn svg{transition:transform .25s var(--ease)}
+.toggle-btn.open svg{transform:rotate(180deg)}
+
+.reply-collapse{
+  display:flex;align-items:center;gap:6px;
+  margin-top:6px;font-size:12px;font-weight:600;color:var(--text-dim);
+  cursor:pointer;transition:color .2s ease;
+  -webkit-tap-highlight-color: transparent;user-select:none;
+}
+.reply-collapse:hover{color:var(--text)}
+.reply-collapse svg{width:12px;height:12px;transform:rotate(180deg)}
+
 /* Toast notifications (replaces browser alert()) */
 #toastStack{
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
@@ -750,6 +762,7 @@ function renderReviewForm(){
 }
 
 const REPLY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>`;
+const CHEVRON_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
 
 function renderReviewList(){
@@ -775,21 +788,23 @@ function renderReviewList(){
            <button onclick="submitReply('${r.id}')">Reply</button>
          </div>`
       : `<div class="reply-locked"><a onclick="openAuthModal()">Sign in</a> to reply.</div>`;
+    const isOpen = openReplies.has(r.id);
     return `
     <div class="review-item" style="animation-delay:${Math.min(i,8) * 60}ms">
       <div class="r-head">
         <span class="r-name">${escapeHtml(r.username)}</span>
         <div class="r-actions">
-          <button class="icon-btn reply-btn" onclick="toggleReply('${r.id}')" title="Reply">${REPLY_ICON}</button>
+          <button class="icon-btn toggle-btn ${isOpen ? 'open' : ''}" onclick="toggleReply('${r.id}')" title="${isOpen ? 'Hide replies' : 'Show replies'}">${CHEVRON_ICON}</button>
           ${isOwner ? `<button class="icon-btn delete-btn" onclick="deleteReview('${r.id}')" title="Delete">${TRASH_ICON}</button>` : ''}
           <span class="r-date">${new Date(r.date).toLocaleDateString()}</span>
         </div>
       </div>
       <div class="r-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</div>
       <div class="r-text">${escapeHtml(r.text)}</div>
-      <div class="reply-box ${openReplies.has(r.id) ? 'open' : ''}" id="replyBox-${r.id}">
+      <div class="reply-box ${isOpen ? 'open' : ''}" id="replyBox-${r.id}">
         ${repliesHtml}
         ${replyFormHtml}
+        <div class="reply-collapse" onclick="toggleReply('${r.id}')">${CHEVRON_ICON}<span>Hide replies</span></div>
       </div>
     </div>
   `;
@@ -851,7 +866,6 @@ async function submitReview(){
 }
 
 async function deleteReview(id){
-  if(!confirm("Delete this review?")) return;
   const prevReviews = reviews;
   reviews = reviews.filter(r => r.id !== id);
   renderReviews();
