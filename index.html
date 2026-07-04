@@ -242,8 +242,7 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
   color:var(--text-dim);display:inline-flex;align-items:center;justify-content:center;
   transition:color .2s ease, transform .2s ease;
 }
-.icon-btn:hover{color:var(--text);transform:scale(1.15)}
-.icon-btn.delete-btn:hover{color:#c0273f}
+.icon-btn:hover{transform:scale(1.3)}
 .icon-btn svg{width:14px;height:14px;display:block}
 
 .reply-box{
@@ -769,12 +768,20 @@ async function submitReview(){
 
 async function deleteReview(id){
   if(!confirm("Delete this review?")) return;
+  const prevReviews = reviews;
+  reviews = reviews.filter(r => r.id !== id);
+  renderReviews();
   if(fb){
-    await fb.deleteDoc(fb.doc(fb.db, "contsound_reviews", id));
+    try{
+      await fb.deleteDoc(fb.doc(fb.db, "contsound_reviews", id));
+    } catch(err){
+      console.error("Failed to delete review:", err);
+      reviews = prevReviews;
+      renderReviews();
+      alert("Couldn't delete that review, try again.");
+    }
   } else {
-    reviews = reviews.filter(r => r.id !== id);
     saveReviews();
-    renderReviews();
   }
 }
 
@@ -784,16 +791,26 @@ async function submitReply(id){
   if(!text) return;
   const reply = { username: currentUser.username, text, date: Date.now() };
   openReplies.add(id);
+
+  // optimistic: show it immediately instead of waiting on the network/listener
+  const rev = reviews.find(r => r.id === id);
+  if(rev){
+    rev.replies = rev.replies || [];
+    rev.replies.push(reply);
+  }
+  renderReviewList();
+
   if(fb){
-    await fb.updateDoc(fb.doc(fb.db, "contsound_reviews", id), { replies: fb.arrayUnion(reply) });
-  } else {
-    const rev = reviews.find(r => r.id === id);
-    if(rev){
-      rev.replies = rev.replies || [];
-      rev.replies.push(reply);
-      saveReviews();
+    try{
+      await fb.updateDoc(fb.doc(fb.db, "contsound_reviews", id), { replies: fb.arrayUnion(reply) });
+    } catch(err){
+      console.error("Failed to save reply:", err);
+      if(rev) rev.replies = rev.replies.filter(r => r !== reply);
+      renderReviewList();
+      alert("Couldn't save your reply, try again.");
     }
-    renderReviews();
+  } else {
+    saveReviews();
   }
 }
 
@@ -801,13 +818,24 @@ async function deleteReply(reviewId, replyIndex){
   openReplies.add(reviewId);
   const rev = reviews.find(r => r.id === reviewId);
   if(!rev) return;
+  const removed = rev.replies[replyIndex];
   const newReplies = (rev.replies || []).filter((_, i) => i !== replyIndex);
+
+  // optimistic
+  rev.replies = newReplies;
+  renderReviewList();
+
   if(fb){
-    await fb.updateDoc(fb.doc(fb.db, "contsound_reviews", reviewId), { replies: newReplies });
+    try{
+      await fb.updateDoc(fb.doc(fb.db, "contsound_reviews", reviewId), { replies: newReplies });
+    } catch(err){
+      console.error("Failed to delete reply:", err);
+      rev.replies.splice(replyIndex, 0, removed);
+      renderReviewList();
+      alert("Couldn't delete that reply, try again.");
+    }
   } else {
-    rev.replies = newReplies;
     saveReviews();
-    renderReviews();
   }
 }
 
