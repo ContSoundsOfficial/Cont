@@ -765,6 +765,10 @@ const REPLY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const CHEVRON_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
 
+function sameUser(a, b){
+  return a && b && a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 function renderReviewList(){
   const list = document.getElementById('reviewList');
   if(!list) return; // modal not open yet
@@ -774,12 +778,12 @@ function renderReviewList(){
   }
   const sorted = fb ? reviews : reviews.slice().reverse();
   list.innerHTML = sorted.map((r, i) => {
-    const isOwner = currentUser && currentUser.username === r.username;
+    const isOwner = currentUser && sameUser(currentUser.username, r.username);
     const replies = fb ? (repliesByReview[r.id] || []) : (r.replies || []);
     const repliesHtml = replies.length ? `<div class="reply-list">${replies.map((rep) => `
       <div class="reply-item">
         <div class="reply-body"><span class="reply-name">${escapeHtml(rep.username)}</span> ${escapeHtml(rep.text)}</div>
-        ${currentUser && currentUser.username === rep.username ? `<button class="icon-btn delete-btn" onclick="deleteReply('${r.id}','${rep.id}')" title="Delete">${TRASH_ICON}</button>` : ''}
+        ${currentUser && sameUser(currentUser.username, rep.username) ? `<button class="icon-btn delete-btn" onclick="deleteReply('${r.id}','${rep.id}')" title="Delete">${TRASH_ICON}</button>` : ''}
       </div>
     `).join('')}</div>` : '';
     const replyFormHtml = currentUser
