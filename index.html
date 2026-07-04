@@ -228,12 +228,47 @@ ul li:hover{color:var(--text);transform:translateX(4px)}
   transition:transform .2s ease;
 }
 .review-item:hover{transform:translateX(2px)}
-.review-item .r-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.review-item .r-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:10px}
 .review-item .r-name{font-weight:700;font-size:13px}
 .review-item .r-date{font-size:11px;color:var(--text-dim)}
 .review-item .r-stars{color:var(--accent);font-size:12px;margin-bottom:6px}
 .review-item .r-text{font-size:13px;color:var(--text-dim);line-height:1.6}
 .no-reviews{color:var(--text-dim);font-size:13px;padding:10px 0;animation: fadeUp .3s var(--ease) both}
+
+/* Reply / delete icons */
+.r-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.icon-btn{
+  background:none;border:none;padding:0;margin:0;cursor:pointer;
+  color:var(--text-dim);display:inline-flex;align-items:center;justify-content:center;
+  transition:color .2s ease, transform .2s ease;
+}
+.icon-btn:hover{color:var(--text);transform:scale(1.15)}
+.icon-btn.delete-btn:hover{color:#c0273f}
+.icon-btn svg{width:14px;height:14px;display:block}
+
+.reply-box{
+  display:none;margin-top:10px;margin-left:2px;padding-left:16px;
+  border-left:2px solid var(--line);
+}
+.reply-box.open{display:block;animation:fadeUp .3s var(--ease) both}
+.reply-list{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.reply-item{
+  font-size:12.5px;color:var(--text-dim);display:flex;justify-content:space-between;
+  align-items:flex-start;gap:8px;animation:fadeUp .25s var(--ease) both;
+}
+.reply-item .reply-body{flex:1;line-height:1.5}
+.reply-item .reply-name{font-weight:700;color:var(--text)}
+.reply-input-row{display:flex;gap:8px;margin:8px 0 4px}
+.reply-input-row textarea{
+  flex:1;min-height:38px;padding:8px 10px;border-radius:6px;
+  border:1px solid var(--line);background:var(--accent-dim);color:var(--text);
+  font-family:inherit;font-size:12.5px;resize:vertical;outline:none;
+  transition:border-color .25s ease, background .25s ease, box-shadow .25s ease;
+}
+.reply-input-row textarea:focus{border-color:var(--border);background:var(--surface);box-shadow:0 0 0 3px rgba(20,21,28,.06)}
+.reply-input-row button{padding:8px 14px;font-size:12px;align-self:flex-end}
+.reply-locked{font-size:12px;color:var(--text-dim);padding:6px 0}
+.reply-locked a{color:var(--text);cursor:pointer;font-weight:600;text-decoration:underline}
 
 @media (max-width:640px){
   header{padding:14px 18px;flex-wrap:wrap}
@@ -398,13 +433,13 @@ const FIREBASE_CONFIG = {
   appId: "1:130387612791:web:913d6df45222e62a5a2272"
 };
 const FIREBASE_ENABLED = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
-let fb = null; // holds { setDoc, increment, addDoc, statsDocRef, reviewsCollRef } once loaded
+let fb = null; // holds { setDoc, increment, addDoc, updateDoc, deleteDoc, arrayUnion, doc, db, statsDocRef, reviewsCollRef } once loaded
 
 async function initFirebase(){
   if(!FIREBASE_ENABLED) return;
   try{
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-    const { getFirestore, doc, onSnapshot, setDoc, increment, collection, addDoc, query, orderBy } =
+    const { getFirestore, doc, onSnapshot, setDoc, increment, collection, addDoc, updateDoc, deleteDoc, arrayUnion, query, orderBy } =
       await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
     const app = initializeApp(FIREBASE_CONFIG);
@@ -421,12 +456,12 @@ async function initFirebase(){
 
     const q = query(reviewsCollRef, orderBy("date", "desc"));
     onSnapshot(q, snap => {
-      reviews = snap.docs.map(d => d.data());
+      reviews = snap.docs.map(d => ({ id: d.id, replies: [], ...d.data() }));
       renderReviewList();
       renderCounters();
     });
 
-    fb = { setDoc, increment, addDoc, statsDocRef, reviewsCollRef };
+    fb = { setDoc, increment, addDoc, updateDoc, deleteDoc, arrayUnion, doc, db, statsDocRef, reviewsCollRef };
   } catch(err){
     console.error("Firebase failed to load, falling back to local storage:", err);
     fb = null;
@@ -437,8 +472,14 @@ async function initFirebase(){
 let downloads = parseInt(localStorage.getItem(LS_DOWNLOADS) || "0", 10);
 let views = parseInt(localStorage.getItem(LS_VIEWS) || "0", 10);
 let reviews = JSON.parse(localStorage.getItem(LS_REVIEWS) || "[]");
+// backfill ids/replies for reviews saved before this feature existed
+reviews.forEach(r => {
+  if(!r.id) r.id = "r" + r.date + Math.random().toString(36).slice(2,8);
+  if(!r.replies) r.replies = [];
+});
 let currentUser = JSON.parse(localStorage.getItem(LS_SESSION) || "null");
 let selectedStars = 0;
+let openReplies = new Set(); // ids of reviews with reply box expanded
 
 /* ---------- number tweening ---------- */
 const _lastShown = {}; // id -> last displayed numeric value
@@ -625,6 +666,9 @@ function renderReviewForm(){
   }
 }
 
+const REPLY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>`;
+const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
+
 function renderReviewList(){
   const list = document.getElementById('reviewList');
   if(!list) return; // modal not open yet
@@ -633,16 +677,46 @@ function renderReviewList(){
     return;
   }
   const sorted = fb ? reviews : reviews.slice().reverse();
-  list.innerHTML = sorted.map((r, i) => `
+  list.innerHTML = sorted.map((r, i) => {
+    const isOwner = currentUser && currentUser.username === r.username;
+    const replies = r.replies || [];
+    const repliesHtml = replies.length ? `<div class="reply-list">${replies.map((rep, ri) => `
+      <div class="reply-item">
+        <div class="reply-body"><span class="reply-name">${escapeHtml(rep.username)}</span> ${escapeHtml(rep.text)}</div>
+        ${currentUser && currentUser.username === rep.username ? `<button class="icon-btn delete-btn" onclick="deleteReply('${r.id}',${ri})" title="Delete">${TRASH_ICON}</button>` : ''}
+      </div>
+    `).join('')}</div>` : '';
+    const replyFormHtml = currentUser
+      ? `<div class="reply-input-row">
+           <textarea id="replyText-${r.id}" placeholder="Write a reply..."></textarea>
+           <button onclick="submitReply('${r.id}')">Reply</button>
+         </div>`
+      : `<div class="reply-locked"><a onclick="openAuthModal()">Sign in</a> to reply.</div>`;
+    return `
     <div class="review-item" style="animation-delay:${Math.min(i,8) * 60}ms">
       <div class="r-head">
         <span class="r-name">${escapeHtml(r.username)}</span>
-        <span class="r-date">${new Date(r.date).toLocaleDateString()}</span>
+        <div class="r-actions">
+          <button class="icon-btn reply-btn" onclick="toggleReply('${r.id}')" title="Reply">${REPLY_ICON}</button>
+          ${isOwner ? `<button class="icon-btn delete-btn" onclick="deleteReview('${r.id}')" title="Delete">${TRASH_ICON}</button>` : ''}
+          <span class="r-date">${new Date(r.date).toLocaleDateString()}</span>
+        </div>
       </div>
       <div class="r-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</div>
       <div class="r-text">${escapeHtml(r.text)}</div>
+      <div class="reply-box ${openReplies.has(r.id) ? 'open' : ''}" id="replyBox-${r.id}">
+        ${repliesHtml}
+        ${replyFormHtml}
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
+}
+
+function toggleReply(id){
+  if(openReplies.has(id)) openReplies.delete(id);
+  else openReplies.add(id);
+  renderReviewList();
 }
 
 function buildStarPicker(){
@@ -677,7 +751,8 @@ async function submitReview(){
     username: currentUser.username,
     stars: selectedStars,
     text,
-    date: Date.now()
+    date: Date.now(),
+    replies: []
   };
   if(fb){
     await fb.addDoc(fb.reviewsCollRef, review);
@@ -685,7 +760,52 @@ async function submitReview(){
     document.getElementById('reviewText').value = "";
     buildStarPicker();
   } else {
+    review.id = "r" + review.date + Math.random().toString(36).slice(2,8);
     reviews.push(review);
+    saveReviews();
+    renderReviews();
+  }
+}
+
+async function deleteReview(id){
+  if(!confirm("Delete this review?")) return;
+  if(fb){
+    await fb.deleteDoc(fb.doc(fb.db, "contsound_reviews", id));
+  } else {
+    reviews = reviews.filter(r => r.id !== id);
+    saveReviews();
+    renderReviews();
+  }
+}
+
+async function submitReply(id){
+  const input = document.getElementById(`replyText-${id}`);
+  const text = input.value.trim();
+  if(!text) return;
+  const reply = { username: currentUser.username, text, date: Date.now() };
+  openReplies.add(id);
+  if(fb){
+    await fb.updateDoc(fb.doc(fb.db, "contsound_reviews", id), { replies: fb.arrayUnion(reply) });
+  } else {
+    const rev = reviews.find(r => r.id === id);
+    if(rev){
+      rev.replies = rev.replies || [];
+      rev.replies.push(reply);
+      saveReviews();
+    }
+    renderReviews();
+  }
+}
+
+async function deleteReply(reviewId, replyIndex){
+  openReplies.add(reviewId);
+  const rev = reviews.find(r => r.id === reviewId);
+  if(!rev) return;
+  const newReplies = (rev.replies || []).filter((_, i) => i !== replyIndex);
+  if(fb){
+    await fb.updateDoc(fb.doc(fb.db, "contsound_reviews", reviewId), { replies: newReplies });
+  } else {
+    rev.replies = newReplies;
     saveReviews();
     renderReviews();
   }
